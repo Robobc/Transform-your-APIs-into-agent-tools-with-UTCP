@@ -66,23 +66,34 @@ Important: this application uses various AWS services and there are costs associ
 
 ## How it works
 
-This pattern demonstrates enterprise-grade AI agent integration with tiered discovery by:
+This pattern demonstrates enterprise-grade AI agent integration with tiered discovery using **OpenAPI-driven UTCP generation**:
 
-1. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
-2. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
-3. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
-4. **Standardized Response**: All interactions follow UTCP protocol standards
+1. **OpenAPI Specifications**: API endpoints are defined using industry-standard OpenAPI 3.0 specifications
+2. **Dynamic UTCP Generation**: The `/utcp` endpoint uses the official UTCP SDK's `OpenApiConverter` to transform OpenAPI specs into UTCP tool definitions at runtime
+3. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
+4. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
+5. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
+6. **Standardized Response**: All interactions follow UTCP protocol standards
 
 The pattern includes:
 - **Unprotected endpoint** (`/unprotected`): Demonstrates public API integration
 - **Protected endpoint** (`/protected`): Shows secure API access with JWT authentication
 - **UTCP endpoint** (`/utcp`): Provides tiered tool discovery for AI agents (public endpoint with internal auth logic)
 
+### OpenAPI-Driven Architecture Benefits:
+
+- **Single Source of Truth**: API definitions are maintained in OpenAPI format
+- **Industry Standard**: Uses OpenAPI 3.0 specifications for API documentation
+- **Automatic UTCP Generation**: Tools are generated dynamically from OpenAPI specs
+- **Easy Maintenance**: Update OpenAPI specs, UTCP tools update automatically
+- **Better Tooling**: Supports Swagger UI, validation, and other OpenAPI tools
+- **Scalable**: Easy to add new endpoints by updating OpenAPI specifications
+
 The UTCP endpoint implements tiered discovery:
 - **Without authentication**: Returns only public tools (e.g., `get_unprotected_data`)
 - **With JWT authentication**: Returns all tools (public + protected, e.g., `get_unprotected_data` + `get_protected_data`)
 
-Each API endpoint is automatically described in the UTCP manual with proper authentication requirements, input/output schemas, and execution details.
+Each API endpoint is automatically described in the UTCP manual with proper authentication requirements, input/output schemas, and execution details derived from the OpenAPI specifications.
 
 ## Testing
 
