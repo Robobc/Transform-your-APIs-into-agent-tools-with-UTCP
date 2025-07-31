@@ -226,6 +226,4 @@ cdk destroy
 - Learn more at Serverless Land Patterns: [https://serverlessland.com/patterns/apigw-http-api-cognito-lambda-cdk](https://serverlessland.com/patterns/apigw-http-api-cognito-lambda-cdk)
 
 ----
-Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
 SPDX-License-Identifier: MIT-0
