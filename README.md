@@ -162,36 +162,6 @@ This returns a UTCP manual describing all available tools:
 }
 ```
 
-**Protected endpoint**
-To test the protected endpoint:
-1. First sign-up the fake user against Cognito. 
-   ```bash
-    aws cognito-idp sign-up \
-    --client-id ${CLIENT_ID} \
-    --username ${EMAIL} \
-    --password ${PASSWORD}
-   ```
-2. Confirm the fake user to Cognito
-   ```bash
-    aws cognito-idp admin-confirm-sign-up \
-    --user-pool-id ${POOL_ID} \
-    --username ${EMAIL}
-   ```
-4. Then you send the authentication data and Cognito will return the token. 
-   ```bash
-   TOKEN=$(aws cognito-idp initiate-auth \
-    --client-id ${CLIENT_ID} \
-    --auth-flow USER_PASSWORD_AUTH \
-    --auth-parameters USERNAME=${EMAIL},PASSWORD=${PASSWORD} \
-    --query 'AuthenticationResult.AccessToken' \
-    --output text)
-   ```
-5. Send an HTTP GET request to the API Gateway with the JWT token, which will verify the token call the protected Lambda function.
-    ```bash
-    curl -H "Authorization: ${TOKEN}" ${API_URL}/protected
-    ```
-6. The result payload should display `Hello Protected Space!`
-
 ## AI Agent Integration
 
 **Testing with Claude via Amazon Bedrock**
