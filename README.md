@@ -66,17 +66,21 @@ Important: this application uses various AWS services and there are costs associ
 
 ## How it works
 
-This pattern demonstrates enterprise-grade AI agent integration by:
+This pattern demonstrates enterprise-grade AI agent integration with tiered discovery by:
 
-1. **API Discovery**: AI agents call the `/utcp` endpoint to discover available tools
-2. **Authentication**: Agents authenticate using Cognito JWT tokens for secure access
+1. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
+2. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
 3. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
 4. **Standardized Response**: All interactions follow UTCP protocol standards
 
 The pattern includes:
 - **Unprotected endpoint** (`/unprotected`): Demonstrates public API integration
 - **Protected endpoint** (`/protected`): Shows secure API access with JWT authentication
-- **UTCP endpoint** (`/utcp`): Provides tool discovery for AI agents (JWT protected)
+- **UTCP endpoint** (`/utcp`): Provides tiered tool discovery for AI agents (public endpoint with internal auth logic)
+
+The UTCP endpoint implements tiered discovery:
+- **Without authentication**: Returns only public tools (e.g., `get_unprotected_data`)
+- **With JWT authentication**: Returns all tools (public + protected, e.g., `get_unprotected_data` + `get_protected_data`)
 
 Each API endpoint is automatically described in the UTCP manual with proper authentication requirements, input/output schemas, and execution details.
 
@@ -137,12 +141,25 @@ TOKEN=$(aws cognito-idp initiate-auth \
  --query 'AuthenticationResult.AccessToken' \
  --output text)
 ```
-Send an HTTP GET request to the API Gateway with the JWT token, which will verify the token call the protected Lambda function.
+Send an HTTP GET request to the API Gateway with the JWT token, which will verify the token and call the protected Lambda function.
  ```bash
+curl -H "Authorization: ${TOKEN}" ${API_URL}/protected
+```
+
+**UTCP endpoint (Tiered Discovery)**
+To test the UTCP tiered discovery functionality:
+
+Test without authentication (should return only public tools):
+```bash
+curl ${API_URL}/utcp
+```
+
+Test with authentication (should return all tools):
+```bash
 curl -H "Authorization: ${TOKEN}" ${API_URL}/utcp
 ```
 
-This returns a UTCP manual describing all available tools:
+The authenticated request returns a UTCP manual describing all available tools:
 ```json
 {
   "version": "0.1.1",
@@ -190,7 +207,28 @@ pip install boto3 requests
 python test_claude_bedrock.py
 ```
 
-The script shows how enterprise customers can enable AI agents to securely interact with their APIs without manual configuration or hardcoded endpoints.
+**Testing Tiered Discovery**
+
+An enhanced test script (`test_tiered_discovery.py`) demonstrates the complete tiered discovery model:
+1. **Unauthenticated Discovery**: Shows only public tools available without authentication
+2. **Authenticated Discovery**: Shows all tools (public + protected) available with JWT authentication
+3. **Tool Execution Testing**: Tests both public and protected tools with and without authentication
+4. **Security Validation**: Confirms protected tools are properly secured
+
+To run the tiered discovery test:
+```bash
+pip install boto3 requests
+python test_tiered_discovery.py
+```
+
+**Expected Results:**
+- Unauthenticated agents discover 1 tool (public only)
+- Authenticated agents discover 2 tools (public + protected)
+- Public tools work with or without authentication
+- Protected tools require authentication and return 401 without it
+- This enables progressive disclosure and layered security for AI agents
+
+The scripts show how enterprise customers can enable AI agents to securely interact with their APIs without manual configuration or hardcoded endpoints.
  
 
 ## Cleanup
