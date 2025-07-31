@@ -44,7 +44,7 @@ Important: this application uses various AWS services and there are costs associ
 
 1. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository:
     ```bash 
-    git clone git@github.com:Robobc/Transform-your-APIs-into-agent-tools-with-UTCP.git
+    git clone https://github.com/Robobc/Transform-your-APIs-into-agent-tools-with-UTCP.git
     ```
 
 1. Change directory to the pattern directory:
