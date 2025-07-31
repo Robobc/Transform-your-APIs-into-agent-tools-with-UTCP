@@ -3,10 +3,10 @@ import requests
 import json
 
 # Configuration
-API_URL = "https://sqgs3snwya.execute-api.us-east-1.amazonaws.com/"  # Replace with your API URL
+API_URL = "https://7xkzkojyfi.execute-api.us-east-1.amazonaws.com/"  # Replace with your API URL
 REGION = "us-east-1"  # Replace with your region
-POOL_ID = "us-east-1_AXHdkm3Oy"  # Replace with your Cognito User Pool ID
-CLIENT_ID = "5r8ukpu33b5fj92glqlvjat420"  # Replace with your Cognito Client ID
+POOL_ID = "us-east-1_Wmwra3jGh"  # Replace with your Cognito User Pool ID
+CLIENT_ID = "2oq563ge84k0upqmbgdsm6hu07"  # Replace with your Cognito Client ID
 EMAIL = "fake@example.com"
 PASSWORD = "S3cuRe#FaKE*"
 
@@ -28,9 +28,10 @@ def get_jwt_token():
         print(f"Error getting token: {e}")
         return None
 
-def get_utcp_tools():
-    """Fetch tools from UTCP endpoint"""
-    response = requests.get(f"{API_URL}/utcp")
+def get_utcp_tools(jwt_token):
+    """Fetch tools from UTCP endpoint with authentication"""
+    headers = {'Authorization': jwt_token}
+    response = requests.get(f"{API_URL}/utcp", headers=headers)
     return response.json()
 
 def convert_to_bedrock_tools(utcp_manual):
@@ -82,17 +83,17 @@ def test_with_claude():
     # Initialize Bedrock client
     bedrock = boto3.client('bedrock-runtime', region_name=REGION)
     
-    # Get UTCP tools
-    utcp_manual = get_utcp_tools()
-    bedrock_tools = convert_to_bedrock_tools(utcp_manual)
-    
-    print(f"Discovered {len(bedrock_tools)} tools from UTCP endpoint")
-    
-    # Get JWT token for protected endpoint
+    # Get JWT token first
     jwt_token = get_jwt_token()
     if not jwt_token:
         print("Failed to get JWT token")
         return
+    
+    # Get UTCP tools with authentication
+    utcp_manual = get_utcp_tools(jwt_token)
+    bedrock_tools = convert_to_bedrock_tools(utcp_manual)
+    
+    print(f"Discovered {len(bedrock_tools)} tools from UTCP endpoint")
     
     # Test conversation with Claude
     messages = [
