@@ -1,4 +1,4 @@
-# Enterprise AI Agent Integration with UTCP and Secure APIs
+# Transform your (Serverless) APIs into agent tools with UTCP - DEMO
 
 This sample demonstrates how enterprise customers can enable AI agents to securely discover and interact with their existing APIs using the Universal Tool Calling Protocol (UTCP). Built on top of the [Amazon API Gateway HTTP API with Cognito JWT and AWS Lambda integration](https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-cognito-lambda-cdk) pattern, this example shows how to transform existing APIs into AI-discoverable tools without breaking changes.
 
@@ -100,17 +100,33 @@ To test the unprotected endpoint, send a HTTP GET request command to the HTTP AP
 ```bash
 curl ${API_URL}/unprotected
 ```
+**Protected endpoint**
+To test the protected endpoint:
 
-**UTCP Discovery endpoint**
-To discover available tools for AI agents (requires JWT authentication):
+First sign-up the fake user against Cognito.
 ```bash
+ aws cognito-idp sign-up \
+ --client-id ${CLIENT_ID} \
+ --username ${EMAIL} \
+ --password ${PASSWORD}
+```
+Confirm the fake user to Cognito
+ ```bash
+ aws cognito-idp admin-confirm-sign-up \
+ --user-pool-id ${POOL_ID} \
+ --username ${EMAIL}
+```
+Then you send the authentication data and Cognito will return the token.
+ ```bash
 TOKEN=$(aws cognito-idp initiate-auth \
  --client-id ${CLIENT_ID} \
  --auth-flow USER_PASSWORD_AUTH \
  --auth-parameters USERNAME=${EMAIL},PASSWORD=${PASSWORD} \
  --query 'AuthenticationResult.AccessToken' \
  --output text)
-
+```
+Send an HTTP GET request to the API Gateway with the JWT token, which will verify the token call the protected Lambda function.
+ ```bash
 curl -H "Authorization: ${TOKEN}" ${API_URL}/utcp
 ```
 
