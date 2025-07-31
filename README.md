@@ -83,16 +83,28 @@ Each API endpoint is automatically described in the UTCP manual with proper auth
 ## Testing
 
 **Pre-requisites**
-1. Update the variables with the outputs of your stack.
+1. Export the variables with the outputs of your stack.
    ```bash
-     API_URL="<your api URL>"    
-     POOL_ID="<your pool ID>" 
-     CLIENT_ID="<your client ID>" 
+     # Get the stack name (adjust the filter if your stack has a different naming pattern)
+     export STACK_NAME=$(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query 'StackSummaries[?contains(StackName, `Transform`) || contains(StackName, `Utcp`) || contains(StackName, `Api`)].StackName' --output text)
+     
+     # Extract values from CloudFormation stack outputs
+     export API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`HttpApiURL`].OutputValue' --output text)
+     export POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' --output text)
+     export CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' --output text)
+     
+     # Export the AWS region (needed for Python script)
+     export AWS_DEFAULT_REGION=$(aws configure get region)
+
+     echo "API_URL: $API_URL"
+     echo "POOL_ID: $POOL_ID"
+     echo "CLIENT_ID: $CLIENT_ID"
+     echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
    ```
-2. Set the variables for the fake user to be created
+2. Export the variables for the fake user to be created
    ```bash
-     EMAIL="fake@example.com"                                
-     PASSWORD="S3cuRe#FaKE*"
+     export EMAIL="fake@example.com"                                
+     export PASSWORD="S3cuRe#FaKE*"
    ```
 
 **Unprotected endpoint**

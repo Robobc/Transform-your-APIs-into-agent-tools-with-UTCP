@@ -28,21 +28,30 @@ export class HttpApiCognitoLambdaStack extends Stack {
     const unprotectedFn = new NodejsFunction(this, 'unprotectedFn', {
       runtime: Runtime.NODEJS_20_X,
       entry: path.join(__dirname, '/../resources/unprotected-fn.ts'),
-      handler: 'handler'
+      handler: 'handler',
+      bundling: {
+        forceDockerBundling: false,
+      }
     })
 
     // Protected Accessible Lambda
     const protectedFn = new NodejsFunction(this, 'protectedFn', {
       runtime: Runtime.NODEJS_20_X,
       entry: path.join(__dirname, '/../resources/protected-fn.ts'),
-      handler: 'handler'
+      handler: 'handler',
+      bundling: {
+        forceDockerBundling: false,
+      }
     })
 
     // UTCP Manual Lambda
     const utcpFn = new NodejsFunction(this, 'utcpFn', {
       runtime: Runtime.NODEJS_20_X,
       entry: path.join(__dirname, '/../resources/utcp-fn.ts'),
-      handler: 'handler'
+      handler: 'handler',
+      bundling: {
+        forceDockerBundling: false,
+      }
     })
 
     // HTTP API Gateway
