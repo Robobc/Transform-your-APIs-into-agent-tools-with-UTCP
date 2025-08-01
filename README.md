@@ -1,10 +1,10 @@
 # Transform your (Serverless) APIs into agent tools with UTCP - DEMO
 
-This sample demonstrates how enterprise customers can enable AI agents to securely discover and interact with their existing APIs using the Universal Tool Calling Protocol (UTCP). Built on top of the [Amazon API Gateway HTTP API with Cognito JWT and AWS Lambda integration](https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-cognito-lambda-cdk) pattern, this example shows how to transform existing APIs into AI-discoverable tools without breaking changes.
+This sample demonstrates how enterprise customers can enable AI agents to securely discover and interact with their existing APIs, without breaking changes and complex additional server infrastructure, using the [Universal Tool Calling Protocol (UTCP)](https://github.com/universal-tool-calling-protocol/).
 
 ## What is UTCP?
 
-UTCP (Universal Tool Calling Protocol) is a standardized protocol that makes APIs discoverable and callable by AI agents. It provides:
+[UTCP (Universal Tool Calling Protocol)](https://github.com/universal-tool-calling-protocol/) is a standardized protocol that makes APIs discoverable and callable by AI agents. It provides:
 
 - **Zero API Changes**: Your existing endpoints remain unchanged
 - **AI Agent Discoverability**: Agents can automatically discover and understand API capabilities
@@ -18,18 +18,125 @@ This pattern creates:
 - Amazon API Gateway HTTP API with three endpoints:
   - `/unprotected` - Public endpoint (no authentication)
   - `/protected` - Secured with Cognito JWT authentication
-  - `/utcp` - UTCP discovery endpoint (protected with JWT)
+  - `/utcp` - UTCP discovery endpoint (public endpoint with tiered discovery logic)
 - AWS Lambda functions for each endpoint
 - Amazon Cognito User Pool for authentication
-- UTCP manual that describes available tools to AI agents
+- Dynamic UTCP manual generation using the official `@utcp/sdk` simply using OpenAPI specifications
+
+### Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "External"
+        AI[AI Agent]
+    end
+    
+    subgraph "AWS Cloud"
+        subgraph "Amazon API Gateway HTTP API"
+            APIGW[API Gateway HTTP API]
+            AUTH[Lambda Authorizer]
+            
+            subgraph "Routes"
+                ROUTE1[GET /utcp]
+                ROUTE2[GET /unprotected] 
+                ROUTE3[GET /protected]
+            end
+        end
+        
+        subgraph "AWS Lambda"
+            LAMBDA1[UTCP Lambda Function]
+            LAMBDA2[Unprotected Lambda Function]
+            LAMBDA3[Protected Lambda Function]
+        end
+        
+        subgraph "Amazon Cognito"
+            USERPOOL[Cognito User Pool]
+        end
+        
+        subgraph "Amazon CloudWatch"
+            LOGS[CloudWatch Logs]
+            METRICS[CloudWatch Metrics]
+        end
+    end
+    
+    %% External connections
+    AI --> APIGW
+    
+    %% API Gateway internal connections
+    APIGW --> ROUTE1
+    APIGW --> ROUTE2
+    APIGW --> ROUTE3
+    APIGW --> AUTH
+    
+    %% Route to Lambda connections
+    ROUTE1 --> LAMBDA1
+    ROUTE2 --> LAMBDA2
+    ROUTE3 --> LAMBDA3
+    
+    %% Authorization flow
+    AUTH --> USERPOOL
+    ROUTE3 --> AUTH
+    
+    %% Lambda to Cognito for JWT verification
+    LAMBDA1 --> USERPOOL
+    
+    %% Logging and monitoring
+    LAMBDA1 --> LOGS
+    LAMBDA2 --> LOGS
+    LAMBDA3 --> LOGS
+    APIGW --> LOGS
+    APIGW --> METRICS
+    
+    %% Styling
+    classDef external fill:#f9f9f9,stroke:#333,stroke-width:2px
+    classDef apigateway fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef lambda fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef cognito fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef monitoring fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef routes fill:#fff2cc,stroke:#d6b656,stroke-width:1px
+    
+    class AI external
+    class APIGW,AUTH apigateway
+    class LAMBDA1,LAMBDA2,LAMBDA3 lambda
+    class USERPOOL cognito
+    class LOGS,METRICS monitoring
+    class ROUTE1,ROUTE2,ROUTE3 routes
+```
+
+### Tiered Discovery Flow
+
+```mermaid
+sequenceDiagram
+    participant AI as AI Agent
+    participant UTCP as /utcp Endpoint
+    participant Auth as JWT Verifier
+    participant Conv as OpenAPI Converter
+    
+    Note over AI,Conv: Scenario 1: Unauthenticated Discovery
+    AI->>UTCP: GET /utcp (no auth)
+    UTCP->>Auth: Verify JWT (none provided)
+    Auth-->>UTCP: Not authenticated
+    UTCP->>Conv: Convert unprotected OpenAPI only
+    Conv-->>UTCP: 1 tool (get_unprotected_data)
+    UTCP-->>AI: UTCP Manual with 1 public tool
+    
+    Note over AI,Conv: Scenario 2: Authenticated Discovery
+    AI->>UTCP: GET /utcp (with JWT)
+    UTCP->>Auth: Verify JWT token
+    Auth-->>UTCP: Authenticated ✓
+    UTCP->>Conv: Convert all OpenAPI specs
+    Conv-->>UTCP: 2 tools (public + protected)
+    UTCP-->>AI: UTCP Manual with 2 tools
+```
 
 ## Enterprise Benefits
 
-1. **Secure AI Integration**: AI agents can only discover and use APIs after proper authentication
+1. **Progressive AI Integration**: AI agents unlock more capabilities as they authenticate
 2. **Self-Documenting APIs**: The `/utcp` endpoint serves as both documentation and executable specification
 3. **Framework Agnostic**: Works with Claude, GPT, Bedrock, and other AI platforms
 4. **Future-Proof**: Supports multiple transport mechanisms (HTTP, WebSocket, CLI, gRPC)
 5. **Zero Breaking Changes**: Existing API clients continue to work unchanged
+6. **Layered Security**: Multiple levels of protection (discovery + execution)
 
 Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
@@ -66,27 +173,55 @@ Important: this application uses various AWS services and there are costs associ
 
 ## How it works
 
-This pattern demonstrates enterprise-grade AI agent integration with tiered discovery by:
+This pattern demonstrates enterprise-grade AI agent integration with **tiered discovery** using **OpenAPI-driven UTCP generation**:
 
-1. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
-2. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
-3. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
-4. **Standardized Response**: All interactions follow UTCP protocol standards
+### Core Components
 
-The pattern includes:
+1. **OpenAPI Specifications**: API endpoints are defined using industry-standard OpenAPI 3.0 specifications (embedded in Lambda)
+2. **Dynamic UTCP Generation**: The `/utcp` endpoint uses the official UTCP SDK's `OpenApiConverter` to transform OpenAPI specs into UTCP tool definitions at runtime
+3. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
+4. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
+5. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
+6. **Standardized Response**: All interactions follow UTCP protocol standards
+
+### API Endpoints
+
+- **UTCP endpoint** (`/utcp`): **Public endpoint with tiered discovery logic**
+  - No authentication required to access
+  - Returns different tool sets based on JWT presence
+  - Implements progressive disclosure security model
 - **Unprotected endpoint** (`/unprotected`): Demonstrates public API integration
 - **Protected endpoint** (`/protected`): Shows secure API access with JWT authentication
-- **UTCP endpoint** (`/utcp`): Provides tiered tool discovery for AI agents (public endpoint with internal auth logic)
 
-The UTCP endpoint implements tiered discovery:
-- **Without authentication**: Returns only public tools (e.g., `get_unprotected_data`)
-- **With JWT authentication**: Returns all tools (public + protected, e.g., `get_unprotected_data` + `get_protected_data`)
+### Tiered Discovery Model
 
-Each API endpoint is automatically described in the UTCP manual with proper authentication requirements, input/output schemas, and execution details.
+The UTCP endpoint implements progressive disclosure:
+
+| Authentication Status | Tools Returned | Security Model |
+|----------------------|----------------|----------------|
+| **Unauthenticated** | 1 tool (`get_unprotected_data`) | Public tools only |
+| **JWT Authenticated** | 2 tools (public + `get_protected_data`) | Full access |
+
+### OpenAPI-Driven Architecture Benefits:
+
+- **Single Source of Truth**: API definitions are maintained in OpenAPI format
+- **Industry Standard**: Uses OpenAPI 3.0 specifications for API documentation
+- **Automatic UTCP Generation**: Tools are generated dynamically from OpenAPI specs
+- **Easy Maintenance**: Update OpenAPI specs, UTCP tools update automatically
+- **Better Tooling**: Supports Swagger UI, validation, and other OpenAPI tools
+- **Scalable**: Easy to add new endpoints by updating OpenAPI specifications
+
+### Implementation Details:
+
+- **Embedded OpenAPI Specs**: Specifications are embedded directly in the Lambda function for optimal performance and reduced latency
+- **Official UTCP SDK**: Uses the `@utcp/sdk` package for reliable OpenAPI to UTCP conversion
+- **Runtime Generation**: UTCP tools are generated dynamically based on authentication status
+
+Each API endpoint is automatically described in the UTCP manual with proper authentication requirements, input/output schemas, and execution details derived from the OpenAPI specifications.
 
 ## Testing
 
-**Pre-requisites**
+### Pre-requisites
 1. Export the variables with the outputs of your stack.
    ```bash
      # Get the stack name (adjust the filter if your stack has a different naming pattern)
@@ -111,11 +246,14 @@ Each API endpoint is automatically described in the UTCP manual with proper auth
      export PASSWORD="S3cuRe#FaKE*"
    ```
 
+### Individual Endpoint Testing
+
 **Unprotected endpoint**
-To test the unprotected endpoint, send a HTTP GET request command to the HTTP API unprotected endpoint. Be sure to update the endpoint with outputs of your stack. The response payload should shows `Hello Unprotected Space`.
+To test the unprotected endpoint, send a HTTP GET request to the unprotected endpoint. The response should show `Hello Unprotected Space`.
 ```bash
 curl ${API_URL}/unprotected
 ```
+
 **Protected endpoint**
 To test the protected endpoint:
 
@@ -167,19 +305,21 @@ The authenticated request returns a UTCP manual describing all available tools:
     {
       "name": "get_unprotected_data",
       "description": "Get data from the unprotected endpoint",
+      "tags": ["public", "unprotected", "api"],
       "tool_provider": {
         "provider_type": "http",
-        "url": "https://your-api.amazonaws.com/unprotected",
-        "http_method": "GET"
+        "http_method": "GET",
+        "url": "https://your-api.amazonaws.com/unprotected"
       }
     },
     {
       "name": "get_protected_data",
       "description": "Get data from the protected endpoint",
+      "tags": ["protected", "jwt", "auth", "api"],
       "tool_provider": {
         "provider_type": "http",
-        "url": "https://your-api.amazonaws.com/protected",
         "http_method": "GET",
+        "url": "https://your-api.amazonaws.com/protected",
         "auth": {
           "auth_type": "api_key",
           "var_name": "Authorization",
@@ -190,6 +330,8 @@ The authenticated request returns a UTCP manual describing all available tools:
   ]
 }
 ```
+
+*Note: This is a simplified example. The actual response includes full JSON Schema definitions for inputs and outputs. For complete UTCP specification details, see the [Universal Tool Calling Protocol repository](https://github.com/universal-tool-calling-protocol/).*
 
 ## AI Agent Integration
 
@@ -241,24 +383,27 @@ cdk destroy
 ## Enterprise Considerations
 
 **Security**
-- UTCP discovery endpoint is protected with JWT authentication
-- Tool execution maintains original API security requirements
-- No exposure of internal API details to unauthorized agents
+- **Tiered Discovery**: UTCP endpoint is public but implements progressive disclosure based on authentication
+- **Tool Execution Security**: Each tool maintains its original API security requirements
+- **No Information Leakage**: Protected tools are completely hidden from unauthenticated agents
+- **JWT Verification**: Secure token validation using AWS Cognito
 
 **Scalability**
-- Add new tools by updating the UTCP manual - no client changes needed
-- Supports multiple AI frameworks and agent architectures
-- Compatible with existing API management and monitoring tools
+- **Dynamic Tool Generation**: Add new tools by updating OpenAPI specifications
+- **Multi-Framework Support**: Compatible with Claude, GPT, Bedrock, and other AI platforms
+- **API Management Integration**: Works with existing API Gateway monitoring and logging
+- **Horizontal Scaling**: Lambda functions scale automatically with demand
 
 **Compliance**
-- Maintains audit trails through existing API Gateway logging
-- Supports enterprise authentication and authorization patterns
-- No changes to existing API contracts or SLAs
+- **Audit Trails**: Complete request logging through API Gateway CloudWatch integration
+- **Enterprise Authentication**: Supports Cognito, IAM, and other enterprise auth patterns
+- **API Contract Stability**: No changes to existing API contracts or SLAs
+- **Data Governance**: Clear separation between public and protected data access
 
 ## References
 
 - Original pattern: [Amazon API Gateway HTTP API with Cognito JWT and AWS Lambda integration](https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-cognito-lambda-cdk)
-- UTCP Specification: [Universal Tool Calling Protocol](https://github.com/aws-samples/serverless-patterns)
+- UTCP Specification: [Universal Tool Calling Protocol](https://github.com/universal-tool-calling-protocol/)
 - Learn more at Serverless Land Patterns: [https://serverlessland.com/patterns/apigw-http-api-cognito-lambda-cdk](https://serverlessland.com/patterns/apigw-http-api-cognito-lambda-cdk)
 
 ----
