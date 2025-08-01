@@ -27,66 +27,80 @@ This pattern creates:
 
 ```mermaid
 graph TB
-    subgraph "AI Agent"
-        A[AI Agent<br/>Claude/GPT/Bedrock]
+    subgraph "External"
+        AI[AI Agent]
     end
     
     subgraph "AWS Cloud"
         subgraph "Amazon API Gateway HTTP API"
-            B["/utcp<br/>(Public + Tiered Discovery)"]
-            C["/unprotected<br/>(Public)"]
-            D["/protected<br/>(JWT Required)"]
+            APIGW[API Gateway HTTP API]
+            AUTH[Lambda Authorizer]
+            
+            subgraph "Routes"
+                ROUTE1[GET /utcp]
+                ROUTE2[GET /unprotected] 
+                ROUTE3[GET /protected]
+            end
         end
         
-        subgraph "AWS Lambda Functions"
-            E[UTCP Lambda<br/>OpenAPI → UTCP Converter]
-            F[Unprotected Lambda<br/>Public Business Logic]
-            G[Protected Lambda<br/>Secure Business Logic]
+        subgraph "AWS Lambda"
+            LAMBDA1[UTCP Lambda Function]
+            LAMBDA2[Unprotected Lambda Function]
+            LAMBDA3[Protected Lambda Function]
         end
         
         subgraph "Amazon Cognito"
-            H[User Pool<br/>JWT Authentication]
+            USERPOOL[Cognito User Pool]
         end
         
-        subgraph "OpenAPI Specifications"
-            I[Embedded OpenAPI 3.0<br/>Unprotected APIs]
-            J[Embedded OpenAPI 3.0<br/>Protected APIs]
+        subgraph "Amazon CloudWatch"
+            LOGS[CloudWatch Logs]
+            METRICS[CloudWatch Metrics]
         end
     end
     
-    %% AI Agent Interactions
-    A -->|1 - Discover Tools No Auth| B
-    A -->|2 - Authenticate| H
-    A -->|3 - Discover All Tools With JWT| B
-    A -->|4 - Execute Public Tool| C
-    A -->|5 -Execute Protected Tool With JWT| D
+    %% External connections
+    AI --> APIGW
     
-    %% Internal Connections
-    B --> E
-    C --> F
-    D --> G
-    E --> I
-    E --> J
-    E -->|Verify JWT| H
+    %% API Gateway internal connections
+    APIGW --> ROUTE1
+    APIGW --> ROUTE2
+    APIGW --> ROUTE3
+    APIGW --> AUTH
     
-    %% Response Flow
-    E -->|Unauthenticated: 1 Public Tool| A
-    E -->|Authenticated: 2 Tools Public + Protected| A
-    F -->|Hello Unprotected Space!| A
-    G -->|Hello Protected Space!| A
+    %% Route to Lambda connections
+    ROUTE1 --> LAMBDA1
+    ROUTE2 --> LAMBDA2
+    ROUTE3 --> LAMBDA3
+    
+    %% Authorization flow
+    AUTH --> USERPOOL
+    ROUTE3 --> AUTH
+    
+    %% Lambda to Cognito for JWT verification
+    LAMBDA1 --> USERPOOL
+    
+    %% Logging and monitoring
+    LAMBDA1 --> LOGS
+    LAMBDA2 --> LOGS
+    LAMBDA3 --> LOGS
+    APIGW --> LOGS
+    APIGW --> METRICS
     
     %% Styling
-    classDef aiAgent fill:#e1f5fe
-    classDef apiGateway fill:#f3e5f5
-    classDef lambda fill:#fff3e0
-    classDef cognito fill:#e8f5e8
-    classDef openapi fill:#fce4ec
+    classDef external fill:#f9f9f9,stroke:#333,stroke-width:2px
+    classDef apigateway fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef lambda fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef cognito fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef monitoring fill:#ff9900,stroke:#333,stroke-width:2px
+    classDef routes fill:#fff2cc,stroke:#d6b656,stroke-width:1px
     
-    class A aiAgent
-    class B,C,D apiGateway
-    class E,F,G lambda
-    class H cognito
-    class I,J openapi
+    class AI external
+    class APIGW,AUTH apigateway
+    class LAMBDA1,LAMBDA2,LAMBDA3 lambda
+    class USERPOOL cognito
+    class LOGS,METRICS monitoring
+    class ROUTE1,ROUTE2,ROUTE3 routes
 ```
 
 ### Tiered Discovery Flow
