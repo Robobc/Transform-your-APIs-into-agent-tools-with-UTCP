@@ -2,13 +2,14 @@ import boto3
 import requests
 import json
 
-# Configuration
-API_URL = "https://7xkzkojyfi.execute-api.us-east-1.amazonaws.com/"  # Replace with your API URL
-REGION = "us-east-1"  # Replace with your region
-POOL_ID = "us-east-1_Wmwra3jGh"  # Replace with your Cognito User Pool ID
-CLIENT_ID = "2oq563ge84k0upqmbgdsm6hu07"  # Replace with your Cognito Client ID
-EMAIL = "fake@example.com"
-PASSWORD = "S3cuRe#FaKE*"
+# Configuration - using environment variables
+import os
+API_URL = os.environ.get('API_URL')
+REGION = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')  # Use AWS default region or fallback
+POOL_ID = os.environ.get('POOL_ID')
+CLIENT_ID = os.environ.get('CLIENT_ID')
+EMAIL = os.environ.get('EMAIL')
+PASSWORD = os.environ.get('PASSWORD')
 
 def get_jwt_token():
     """Get JWT token from Cognito"""
