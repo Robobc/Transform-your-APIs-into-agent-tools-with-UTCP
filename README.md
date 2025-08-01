@@ -70,8 +70,8 @@ graph TB
     E -->|Verify JWT| H
     
     %% Response Flow
-    E -->|Unauthenticated: 1 Public Tool| A
-    E -->|Authenticated: 2 Tools Public + Protected| A
+    E -->|Unauthenticated - 1 Public Tool| A
+    E -->|Authenticated - 2 Tools Public + Protected| A
     F -->|Hello Unprotected Space!| A
     G -->|Hello Protected Space!| A
     
