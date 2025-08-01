@@ -55,11 +55,11 @@ graph TB
     end
     
     %% AI Agent Interactions
-    A -->|1. Discover Tools<br/>(No Auth)| B
+    A -->|1. Discover Tools No Auth| B
     A -->|2. Authenticate| H
-    A -->|3. Discover All Tools<br/>(With JWT)| B
+    A -->|3. Discover All Tools With JWT| B
     A -->|4. Execute Public Tool| C
-    A -->|5. Execute Protected Tool<br/>(With JWT)| D
+    A -->|5. Execute Protected Tool With JWT| D
     
     %% Internal Connections
     B --> E
@@ -70,10 +70,10 @@ graph TB
     E -->|Verify JWT| H
     
     %% Response Flow
-    E -->|Unauthenticated:<br/>1 Public Tool| A
-    E -->|Authenticated:<br/>2 Tools (Public + Protected)| A
-    F -->|"Hello Unprotected Space!"| A
-    G -->|"Hello Protected Space!"| A
+    E -->|Unauthenticated: 1 Public Tool| A
+    E -->|Authenticated: 2 Tools Public + Protected| A
+    F -->|Hello Unprotected Space!| A
+    G -->|Hello Protected Space!| A
     
     %% Styling
     classDef aiAgent fill:#e1f5fe
