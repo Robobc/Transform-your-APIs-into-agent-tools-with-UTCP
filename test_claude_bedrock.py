@@ -53,7 +53,7 @@ def convert_to_bedrock_tools(utcp_manual):
     
     return bedrock_tools
 
-def execute_tool(tool_name, inputs, utcp_manual):
+def execute_tool(tool_name, inputs, utcp_manual, jwt_token=None):
     """Execute a tool based on UTCP definition"""
     for tool in utcp_manual['tools']:
         if tool['name'] == tool_name:
@@ -61,14 +61,13 @@ def execute_tool(tool_name, inputs, utcp_manual):
             url = provider['url']
             method = provider['http_method']
             
-            headers = {'Content-Type': provider['content_type']}
+            headers = {'Content-Type': provider.get('content_type', 'application/json')}
             
             # Handle auth if present
             if 'auth' in provider and provider['auth']:
                 auth = provider['auth']
-                if auth['location'] == 'header':
-                    auth_value = inputs.get('authorization', '')
-                    headers[auth['var_name']] = auth_value
+                if auth['location'] == 'header' and jwt_token:
+                    headers[auth['var_name']] = jwt_token
             
             if method == 'GET':
                 response = requests.get(url, headers=headers)
@@ -121,7 +120,7 @@ def test_with_claude():
                 print(f"Claude wants to use tool: {tool_name}")
                 
                 # Execute the tool
-                result = execute_tool(tool_name, tool_inputs, utcp_manual)
+                result = execute_tool(tool_name, tool_inputs, utcp_manual, jwt_token)
                 print(f"Tool result: {result}")
                 
                 # Continue conversation with tool result
