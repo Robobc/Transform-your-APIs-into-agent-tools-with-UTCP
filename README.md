@@ -39,18 +39,18 @@ graph TB
         end
         
         subgraph "AWS Lambda Functions"
-            E["UTCP Lambda<br/>OpenAPI → UTCP Converter"]
-            F["Unprotected Lambda<br/>Public Business Logic"]
-            G["Protected Lambda<br/>Secure Business Logic"]
+            E[UTCP Lambda<br/>OpenAPI → UTCP Converter]
+            F[Unprotected Lambda<br/>Public Business Logic]
+            G[Protected Lambda<br/>Secure Business Logic]
         end
         
         subgraph "Amazon Cognito"
-            H["User Pool<br/>JWT Authentication"]
+            H[User Pool<br/>JWT Authentication]
         end
         
         subgraph "OpenAPI Specifications"
-            I["Embedded OpenAPI 3.0<br/>Unprotected APIs"]
-            J["Embedded OpenAPI 3.0<br/>Protected APIs"]
+            I[Embedded OpenAPI 3.0<br/>Unprotected APIs]
+            J[Embedded OpenAPI 3.0<br/>Protected APIs]
         end
     end
     
