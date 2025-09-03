@@ -79,7 +79,7 @@ export class HttpApiCognitoLambdaStack extends Stack {
       path:'/utcp',
       methods: [ HttpMethod.GET ],
       integration: new HttpLambdaIntegration('utcpIntegration', utcpFn),
-      authorizer: undefined  // No authorizer - endpoint is now public but function handles auth internally
+      authorizer: undefined  // No authorizer - endpoint is public and returns all available tools
     })
 
     // Set environment variables for UTCP function
