@@ -18,7 +18,7 @@ This pattern creates:
 - Amazon API Gateway HTTP API with three endpoints:
   - `/unprotected` - Public endpoint (no authentication)
   - `/protected` - Secured with Cognito JWT authentication
-  - `/utcp` - UTCP discovery endpoint (public endpoint with tiered discovery logic)
+  - `/utcp` - UTCP discovery endpoint (public endpoint returning all available tools)
 - AWS Lambda functions for each endpoint
 - Amazon Cognito User Pool for authentication
 - Dynamic UTCP manual generation using the official `@utcp/sdk` simply using OpenAPI specifications
@@ -103,40 +103,28 @@ graph TB
     class ROUTE1,ROUTE2,ROUTE3 routes
 ```
 
-### Tiered Discovery Flow
+### Discovery Flow
 
 ```mermaid
 sequenceDiagram
     participant AI as AI Agent
     participant UTCP as /utcp Endpoint
-    participant Auth as JWT Verifier
     participant Conv as OpenAPI Converter
     
-    Note over AI,Conv: Scenario 1: Unauthenticated Discovery
-    AI->>UTCP: GET /utcp (no auth)
-    UTCP->>Auth: Verify JWT (none provided)
-    Auth-->>UTCP: Not authenticated
-    UTCP->>Conv: Convert unprotected OpenAPI only
-    Conv-->>UTCP: 1 tool (get_unprotected_data)
-    UTCP-->>AI: UTCP Manual with 1 public tool
-    
-    Note over AI,Conv: Scenario 2: Authenticated Discovery
-    AI->>UTCP: GET /utcp (with JWT)
-    UTCP->>Auth: Verify JWT token
-    Auth-->>UTCP: Authenticated ✓
+    AI->>UTCP: GET /utcp
     UTCP->>Conv: Convert all OpenAPI specs
     Conv-->>UTCP: 2 tools (public + protected)
-    UTCP-->>AI: UTCP Manual with 2 tools
+    UTCP-->>AI: UTCP Manual with all available tools
 ```
 
 ## Enterprise Benefits
 
-1. **Progressive AI Integration**: AI agents unlock more capabilities as they authenticate
+1. **Complete API Visibility**: AI agents can discover all available tools in one request
 2. **Self-Documenting APIs**: The `/utcp` endpoint serves as both documentation and executable specification
 3. **Framework Agnostic**: Works with Claude, GPT, Bedrock, and other AI platforms
 4. **Future-Proof**: Supports multiple transport mechanisms (HTTP, WebSocket, CLI, gRPC)
 5. **Zero Breaking Changes**: Existing API clients continue to work unchanged
-6. **Layered Security**: Multiple levels of protection (discovery + execution)
+6. **Layered Security**: Discovery is public, but execution maintains original security requirements
 
 Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
@@ -173,34 +161,24 @@ Important: this application uses various AWS services and there are costs associ
 
 ## How it works
 
-This pattern demonstrates enterprise-grade AI agent integration with **tiered discovery** using **OpenAPI-driven UTCP generation**:
+This pattern demonstrates enterprise-grade AI agent integration with **OpenAPI-driven UTCP generation**:
 
 ### Core Components
 
 1. **OpenAPI Specifications**: API endpoints are defined using industry-standard OpenAPI 3.0 specifications (embedded in Lambda)
 2. **Dynamic UTCP Generation**: The `/utcp` endpoint uses the official UTCP SDK's `OpenApiConverter` to transform OpenAPI specs into UTCP tool definitions at runtime
-3. **Tiered API Discovery**: AI agents call the `/utcp` endpoint to discover available tools based on their authentication status
-4. **Progressive Authentication**: Unauthenticated agents discover public tools; authenticated agents discover all tools
-5. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
-6. **Standardized Response**: All interactions follow UTCP protocol standards
+3. **Complete API Discovery**: AI agents call the `/utcp` endpoint to discover all available tools
+4. **Tool Execution**: Agents call the actual API endpoints using the discovered tool definitions
+5. **Standardized Response**: All interactions follow UTCP protocol standards
 
 ### API Endpoints
 
-- **UTCP endpoint** (`/utcp`): **Public endpoint with tiered discovery logic**
+- **UTCP endpoint** (`/utcp`): **Public endpoint returning all available tools**
   - No authentication required to access
-  - Returns different tool sets based on JWT presence
-  - Implements progressive disclosure security model
+  - Always returns complete tool catalog (both public and protected tools)
+  - Implements discovery vs execution security model
 - **Unprotected endpoint** (`/unprotected`): Demonstrates public API integration
 - **Protected endpoint** (`/protected`): Shows secure API access with JWT authentication
-
-### Tiered Discovery Model
-
-The UTCP endpoint implements progressive disclosure:
-
-| Authentication Status | Tools Returned | Security Model |
-|----------------------|----------------|----------------|
-| **Unauthenticated** | 1 tool (`get_unprotected_data`) | Public tools only |
-| **JWT Authenticated** | 2 tools (public + `get_protected_data`) | Full access |
 
 ### OpenAPI-Driven Architecture Benefits:
 
@@ -284,20 +262,14 @@ Send an HTTP GET request to the API Gateway with the JWT token, which will verif
 curl -H "Authorization: ${TOKEN}" ${API_URL}/protected
 ```
 
-**UTCP endpoint (Tiered Discovery)**
-To test the UTCP tiered discovery functionality:
+**UTCP endpoint**
+To test the UTCP discovery functionality:
 
-Test without authentication (should return only public tools):
 ```bash
 curl ${API_URL}/utcp
 ```
 
-Test with authentication (should return all tools):
-```bash
-curl -H "Authorization: ${TOKEN}" ${API_URL}/utcp
-```
-
-The authenticated request returns a UTCP manual describing all available tools:
+The request returns a UTCP manual describing all available tools:
 ```json
 {
   "version": "0.1.1",
@@ -349,26 +321,24 @@ pip install boto3 requests
 python test_claude_bedrock.py
 ```
 
-**Testing Tiered Discovery**
+**Testing Complete Discovery**
 
-An enhanced test script (`test_tiered_discovery.py`) demonstrates the complete tiered discovery model:
-1. **Unauthenticated Discovery**: Shows only public tools available without authentication
-2. **Authenticated Discovery**: Shows all tools (public + protected) available with JWT authentication
-3. **Tool Execution Testing**: Tests both public and protected tools with and without authentication
-4. **Security Validation**: Confirms protected tools are properly secured
+An enhanced test script (`test_tool_discovery.py`) demonstrates the complete discovery model:
+1. **Tool Discovery**: Shows all tools available from the `/utcp` endpoint
+2. **Tool Execution Testing**: Tests both public and protected tools with and without authentication
+3. **Security Validation**: Confirms protected tools are properly secured
 
-To run the tiered discovery test:
+To run the discovery test:
 ```bash
 pip install boto3 requests
-python test_tiered_discovery.py
+python test_tool_discovery.py
 ```
 
 **Expected Results:**
-- Unauthenticated agents discover 1 tool (public only)
-- Authenticated agents discover 2 tools (public + protected)
+- All agents discover 2 tools (public + protected)
 - Public tools work with or without authentication
 - Protected tools require authentication and return 401 without it
-- This enables progressive disclosure and layered security for AI agents
+- This enables complete visibility with layered security for AI agents
 
 The scripts show how enterprise customers can enable AI agents to securely interact with their APIs without manual configuration or hardcoded endpoints.
  
@@ -383,9 +353,9 @@ cdk destroy
 ## Enterprise Considerations
 
 **Security**
-- **Tiered Discovery**: UTCP endpoint is public but implements progressive disclosure based on authentication
+- **Discovery vs Execution**: UTCP endpoint is public and returns all tools, but execution maintains original security requirements
 - **Tool Execution Security**: Each tool maintains its original API security requirements
-- **No Information Leakage**: Protected tools are completely hidden from unauthenticated agents
+- **Complete Visibility**: All tools are discoverable, but protected tools require authentication to execute
 - **JWT Verification**: Secure token validation using AWS Cognito
 
 **Scalability**

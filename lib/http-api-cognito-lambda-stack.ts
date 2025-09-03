@@ -84,8 +84,6 @@ export class HttpApiCognitoLambdaStack extends Stack {
 
     // Set environment variables for UTCP function
     utcpFn.addEnvironment('API_URL', httpApi.url ?? '');
-    utcpFn.addEnvironment('USER_POOL_ID', userPool.userPoolId);
-    utcpFn.addEnvironment('CLIENT_ID', userPoolClient.userPoolClientId);
 
     // Outputs
     new CfnOutput(this, "HttpApi URL", {
