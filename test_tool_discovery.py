@@ -162,7 +162,7 @@ def test_protected_tool_with_auth(utcp_manual, jwt_token):
     return None
 
 def main():
-    print("🚀 TESTING TIERED DISCOVERY WITH UTCP")
+    print("🚀 TESTING COMPLETE DISCOVERY WITH UTCP")
     print("=" * 50)
     
     # Test 1: Discover tools without authentication
@@ -185,7 +185,11 @@ def main():
     auth_count = len(authenticated_manual['tools']) if authenticated_manual else 0
     print(f"   Unauthenticated: {unauth_count} tools")
     print(f"   Authenticated: {auth_count} tools")
-    print(f"   Additional tools with auth: {auth_count - unauth_count}")
+    
+    if unauth_count == auth_count:
+        print("✅ Both requests return same number of tools (complete discovery)")
+    else:
+        print("⚠️  Different tool counts - unexpected behavior")
     
     # Test 5: Test unprotected tool without authentication (should work)
     if unauthenticated_manual:
@@ -196,22 +200,21 @@ def main():
         test_unprotected_tool_with_auth(authenticated_manual, jwt_token)
     
     # Test 7: Test protected tool without authentication (should fail)
-    if authenticated_manual:  # We need the tool definition from authenticated discovery
-        test_protected_tool_without_auth(authenticated_manual)
+    if unauthenticated_manual:  # Now we can get protected tool definition from unauthenticated discovery
+        test_protected_tool_without_auth(unauthenticated_manual)
     
     # Test 8: Test protected tool with authentication (should work)
     if authenticated_manual:
         test_protected_tool_with_auth(authenticated_manual, jwt_token)
     
-    print("\n✨ TIERED DISCOVERY TEST COMPLETE!")
+    print("\n✨ COMPLETE DISCOVERY TEST COMPLETE!")
     print("=" * 50)
     print("Summary:")
-    print("- Unauthenticated agents can discover public tools only")
-    print("- Authenticated agents can discover all tools (public + protected)")
-    print("- Public tools work with or without authentication")
-    print("- Protected tools require authentication and are hidden from unauthenticated discovery")
-    print("- This enables progressive disclosure and layered security")
-    print("- AI agents get better capabilities as they authenticate")
+    print("- UTCP endpoint always returns 2 tools (public + protected)")
+    print("- Public tools work without authentication")
+    print("- Protected tools require JWT authentication to execute")
+    print("- Discovery is public, execution maintains security")
+    print("- AI agents see all available capabilities upfront")
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,4 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
-import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { OpenApiConverter } from '@utcp/sdk/dist/src/client/openapi-converter';
 import { UtcpManual, UtcpManualSchema } from '@utcp/sdk/dist/src/shared/utcp-manual';
 import { Tool } from '@utcp/sdk/dist/src/shared/tool';
@@ -146,40 +145,6 @@ const protectedApiSpec = {
   }
 };
 
-// Initialize JWT verifier (will be configured with environment variables)
-let jwtVerifier: CognitoJwtVerifier | null = null;
-
-async function initializeJwtVerifier() {
-  if (!jwtVerifier && process.env.USER_POOL_ID && process.env.CLIENT_ID) {
-    jwtVerifier = CognitoJwtVerifier.create({
-      userPoolId: process.env.USER_POOL_ID,
-      tokenUse: 'access',
-      clientId: process.env.CLIENT_ID,
-    });
-  }
-}
-
-async function isAuthenticated(event: APIGatewayProxyEventV2): Promise<boolean> {
-  try {
-    await initializeJwtVerifier();
-    
-    const authHeader = event.headers?.authorization || event.headers?.Authorization;
-    if (!authHeader || !jwtVerifier) {
-      return false;
-    }
-
-    // Extract token from "Bearer <token>" format
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    
-    // Verify the JWT token
-    await jwtVerifier.verify(token);
-    return true;
-  } catch (error) {
-    console.log('Authentication failed:', error);
-    return false;
-  }
-}
-
 function updateApiSpecWithBaseUrl(spec: any, baseUrl: string): any {
   const updatedSpec = JSON.parse(JSON.stringify(spec)); // Deep clone
   if (updatedSpec.servers && updatedSpec.servers[0]) {
@@ -192,31 +157,25 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
   console.log(`Event: ${JSON.stringify(event, null, 2)}`);
   
   const apiUrl = process.env.API_URL || '';
-  const authenticated = await isAuthenticated(event);
-  
-  console.log(`Request authenticated: ${authenticated}`);
 
   try {
     // Update API specs with the actual base URL
     const updatedUnprotectedSpec = updateApiSpecWithBaseUrl(unprotectedApiSpec, apiUrl);
+    const updatedProtectedSpec = updateApiSpecWithBaseUrl(protectedApiSpec, apiUrl);
     
-    // Convert unprotected OpenAPI spec to UTCP tools
+    // Convert both OpenAPI specs to UTCP tools
     const unprotectedConverter = new OpenApiConverter(updatedUnprotectedSpec, {
       providerName: 'unprotected_provider'
     });
+    const protectedConverter = new OpenApiConverter(updatedProtectedSpec, {
+      providerName: 'protected_provider'
+    });
+    
     const unprotectedManual = unprotectedConverter.convert();
-
-    let allTools: Tool[] = [...unprotectedManual.tools];
-
-    // If authenticated, also include protected tools
-    if (authenticated) {
-      const updatedProtectedSpec = updateApiSpecWithBaseUrl(protectedApiSpec, apiUrl);
-      const protectedConverter = new OpenApiConverter(updatedProtectedSpec, {
-        providerName: 'protected_provider'
-      });
-      const protectedManual = protectedConverter.convert();
-      allTools = [...allTools, ...protectedManual.tools];
-    }
+    const protectedManual = protectedConverter.convert();
+    
+    // Always return both public and protected tools
+    const allTools: Tool[] = [...unprotectedManual.tools, ...protectedManual.tools];
 
     // Construct the UTCP manual following the library pattern
     const manual: UtcpManual = UtcpManualSchema.parse({
@@ -229,7 +188,6 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'X-Auth-Status': authenticated ? 'authenticated' : 'unauthenticated',
         'X-Tools-Count': allTools.length.toString()
       },
       body: JSON.stringify(manual, null, 2)

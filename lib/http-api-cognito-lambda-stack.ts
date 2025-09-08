@@ -79,13 +79,11 @@ export class HttpApiCognitoLambdaStack extends Stack {
       path:'/utcp',
       methods: [ HttpMethod.GET ],
       integration: new HttpLambdaIntegration('utcpIntegration', utcpFn),
-      authorizer: undefined  // No authorizer - endpoint is now public but function handles auth internally
+      authorizer: undefined  // No authorizer - endpoint is public and returns all available tools
     })
 
     // Set environment variables for UTCP function
     utcpFn.addEnvironment('API_URL', httpApi.url ?? '');
-    utcpFn.addEnvironment('USER_POOL_ID', userPool.userPoolId);
-    utcpFn.addEnvironment('CLIENT_ID', userPoolClient.userPoolClientId);
 
     // Outputs
     new CfnOutput(this, "HttpApi URL", {

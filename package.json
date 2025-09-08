@@ -19,7 +19,6 @@
     "@types/aws-lambda": "^8.10.136",
     "@utcp/sdk": "^0.1.1",
     "aws-cdk-lib": "^2.185.0",
-    "aws-jwt-verify": "^4.0.1",
     "constructs": "^10.0.0",
     "esbuild": "^0.25.8",
     "source-map-support": "^0.5.21"
